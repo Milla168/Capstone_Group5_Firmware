@@ -10,6 +10,7 @@ from sklearn.metrics import classification_report, confusion_matrix, ConfusionMa
 import tensorflow as tf
 from tensorflow.keras import layers, models, callbacks
 import os
+import joblib
 
 # Configs
 SAMPLING_RATE = 100     # sampling at 100Hz
@@ -346,7 +347,13 @@ def train(model, X_train, y_train, X_val, y_val):
         class_weight=class_weights,
         callbacks=[
             callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
-            callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1)
+            callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1),
+            callbacks.ModelCheckpoint(
+                filepath='models/best_model.keras',
+                monitor='val_loss',
+                save_best_only=True,
+                verbose=1
+            )
         ],
         verbose=1
     )
@@ -355,7 +362,7 @@ def train(model, X_train, y_train, X_val, y_val):
 
 def evaluate(model, X_val, y_val):
     y_prob = model.predict(X_val, verbose=0).flatten()
-    y_pred = (y_prob >= 0.5).astype(int)
+    y_pred = (y_prob >= 0.4).astype(int)
 
     print("\n" + classification_report(y_val, y_pred, target_names=['Non-Stitch', 'Stitch']))
 
@@ -370,6 +377,7 @@ def evaluate(model, X_val, y_val):
 
 if __name__ == "__main__":
     os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+    os.makedirs("models", exist_ok=True)
 
     # time = data_raw['time_ms'].values / 1000
 
@@ -396,7 +404,6 @@ if __name__ == "__main__":
     #     end_time_s=6300
     # )
 
-    os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
     # Load and preprocess train split
     train_raw, train_filtered, X_train, y_train = preprocessing("train")
@@ -412,7 +419,30 @@ if __name__ == "__main__":
     model.summary()
 
     history = train(model, X_train, y_train, X_val, y_val)
-
     plot_history(history)
 
+    print("\n--- VALIDATION SET EVALUATION ---")
     y_prob, y_pred = evaluate(model, X_val, y_val)
+
+    # Save scaler parameters for ESP32 firmware
+    joblib.dump(scaler, 'models/scaler.pkl')
+    np.save('models/scaler_mean.npy', scaler.mean_)
+    np.save('models/scaler_scale.npy', scaler.scale_)
+    print("\nScaler saved to models/")
+
+    # Load best checkpoint before testing
+    model = tf.keras.models.load_model('models/best_model.keras')
+    print("Loaded best model checkpoint")
+
+    # Load and preprocess test split
+    test_raw, test_filtered, X_test, y_test = preprocessing("test")
+
+    # Normalize using training scaler (never refit on test data)
+    num_test = X_test.shape[0]
+    X_test_flat = X_test.reshape(-1, NUM_CHANNELS)
+    X_test_scaled = scaler.transform(X_test_flat).reshape(num_test, WINDOW_LENGTH, NUM_CHANNELS)
+
+    # Evaluate on test set
+    print("\n--- TEST SET EVALUATION ---")
+    y_prob_test, y_pred_test = evaluate(model, X_test_scaled, y_test)
+    # plot_confusion_matrix(y_test, y_pred_test)
