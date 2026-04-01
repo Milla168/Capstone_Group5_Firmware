@@ -3,4 +3,4 @@ machine_learning/data/raw/
 machine_learning/configs/__pycache__
 machine_learning/src/__pycache__
 firmware/.vscode/
-firmware/.pio
+firmware/.pio/
