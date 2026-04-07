@@ -1,9 +1,32 @@
 # src/preprocess.py
+"""
+This module handles data preprocessing for the crochet stitch detection pipeline.
+It provides functions for:
+
+1. Loading CSV session files from dataset directories
+2. Cleaning and validating raw sensor data
+3. Applying low-pass filtering to remove high-frequency noise
+4. Segmenting continuous data into sliding windows
+5. Normalizing features using StandardScaler
+
+Functions:
+    load_sessions: Load and combine CSV files from a directory
+    low_pass_filter: Apply Butterworth low-pass filter to signal data
+    apply_filter: Apply filtering to all sensor columns in a dataframe
+    sliding_windows: Segment data into overlapping windows with majority-vote labels
+    normalize: Standardize features using training data statistics
+    clean: Remove invalid rows and convert columns to proper dtypes
+    preprocess_split: Complete preprocessing pipeline for a dataset split
+
+"""
+
+
 import numpy as np
 import pandas as pd
 from scipy.signal import butter, sosfiltfilt
 from sklearn.preprocessing import StandardScaler
 from configs.config import SENSOR_COLUMNS, CUTOFF_HZ, SAMPLING_RATE, WINDOW_LENGTH, STRIDE
+
 
 
 def load_sessions(split_dir):
@@ -17,7 +40,7 @@ def load_sessions(split_dir):
             The combination of all crochet sessions in the specified dataset folder
 
         Raises:
-            ValueError: If csv files found in specified folder.
+            ValueError: If no csv files found in specified folder.
     """
 
     all_sessions = []
@@ -36,21 +59,19 @@ def load_sessions(split_dir):
     return combined_dataset
 
 
+
 def low_pass_filter(data, cutoff_hz=CUTOFF_HZ, sample_rate_hz=SAMPLING_RATE, order=4):
     """
-    Applies low pass filter to sensor data
+    Applies low pass filter to sensor data to remove high-frequency noise
 
         Args:
-            data ():
-            cutoff_hz ():
-            sample_rate_hz (): 
-            order (int):
+            data (np.ndarray): Raw sensor signal data to be filtered
+            cutoff_hz (float): Cutoff frequency in Hz for the low pass filter
+            sample_rate_hz (float): Sampling rate of the sensor data in Hz
+            order (int): Order of the Butterworth filter
 
         Returns:
-            
-
-        Raises:
-            ValueError: If csv files found in specified folder.
+            np.ndarray: Filtered sensor data with high-frequency noise removed
     """
 
     nyquist = sample_rate_hz / 2
@@ -61,7 +82,17 @@ def low_pass_filter(data, cutoff_hz=CUTOFF_HZ, sample_rate_hz=SAMPLING_RATE, ord
     return data_filtered
 
 
+
 def apply_filter(df):
+    """
+    Applies low pass filter to all sensor columns in the dataframe
+
+        Args:
+            df (pd.DataFrame): Dataframe containing raw sensor data
+
+        Returns:
+            pd.DataFrame: Copy of dataframe with filtered sensor columns
+    """
     df_filtered = df.copy()
     for col in SENSOR_COLUMNS:
         df_filtered[col] = low_pass_filter(df[col].values, CUTOFF_HZ, SAMPLING_RATE)
@@ -69,7 +100,22 @@ def apply_filter(df):
     return df_filtered
 
 
+
 def sliding_windows(data, labels, window_length=WINDOW_LENGTH, stride=STRIDE):
+    """
+    Segments continuous sensor data into fixed-length overlapping windows
+
+        Args:
+            data (np.ndarray): Sensor data array of shape (num_samples, num_channels)
+            labels (np.ndarray): Binary label array of shape (num_samples,)
+            window_length (int): Number of samples per window
+            stride (int): Number of samples to shift between consecutive windows
+
+        Returns:
+            tuple: (X, y) where X is windowed data of shape (num_windows, window_length, num_channels)
+                and y is binary labels of shape (num_windows,) based on majority voting
+    """
+
     X = []
     y = []
 
@@ -92,7 +138,20 @@ def sliding_windows(data, labels, window_length=WINDOW_LENGTH, stride=STRIDE):
     return X, y
 
 
+
 def normalize(X_train, X_val, X_test=None):
+    """
+    Normalizes sensor data using StandardScaler fitted on training data
+
+        Args:
+            X_train (np.ndarray): Training data of shape (num_windows, window_length, num_channels)
+            X_val (np.ndarray): Validation data of shape (num_windows, window_length, num_channels)
+            X_test (np.ndarray, optional): Test data of shape (num_windows, window_length, num_channels)
+
+        Returns:
+            tuple: Scaled arrays (X_train_scaled, X_val_scaled, [X_test_scaled], scaler)
+    """
+
     num_train, window_len, num_channels = X_train.shape
 
     scaler = StandardScaler()
@@ -107,7 +166,18 @@ def normalize(X_train, X_val, X_test=None):
     return X_train_scaled, X_val_scaled, scaler
 
 
+
 def clean(df):
+    """
+    Cleans dataframe by converting columns to numeric and removing invalid rows
+
+        Args:
+            df (pd.DataFrame): Raw dataframe containing sensor data and labels
+
+        Returns:
+            pd.DataFrame: Cleaned dataframe with invalid rows removed and proper dtypes
+    """
+
     required = ['time_ms'] + SENSOR_COLUMNS + ['label']
     for col in required:
         df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -122,7 +192,19 @@ def clean(df):
     return df
 
 
+
 def preprocess_split(split_dir):
+    """
+    Complete preprocessing pipeline for a dataset split
+
+        Args:
+            split_dir (Path): Path to directory containing CSV files for this split
+
+        Returns:
+            tuple: (df_raw, df_filtered, X, y) containing raw dataframe, filtered dataframe,
+                windowed feature array, and windowed label array
+    """
+
     print(f"Loading {split_dir.name}...")
     df_raw = load_sessions(split_dir)
     print(f"  Samples before cleaning: {len(df_raw)}")

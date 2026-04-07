@@ -12,8 +12,8 @@ It takes methods from other files and follows the sequence:
 To run this script, use command:
 
 python run_script.py
-
 """
+
 
 import sys
 import os
@@ -22,11 +22,11 @@ import numpy as np
 import tensorflow as tf
 import joblib
 import os
-from configs.config import ANNOTATED_DIR, KERAS_DIR, TFLITE_DIR, SCALER_DIR
+from configs.config import ANNOTATED_DIR, KERAS_DIR, TFLITE_DIR, SCALER_DIR, SENSOR_COLUMNS, WINDOW_LENGTH, STRIDE
 from src.preprocess import preprocess_split, normalize
 from src.model import build_model
 from src.train import train, evaluate
-from src.visualize import plot_history, plot_confusion_matrix
+from src.visualize import plot_history, plot_confusion_matrix, plot_signals, plot_raw_vs_filtered, plot_signal_segment, plot_windows_segment
 
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -34,10 +34,12 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 for d in [KERAS_DIR, TFLITE_DIR, SCALER_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Preprocess
-_, _, X_train, y_train = preprocess_split(ANNOTATED_DIR / "train")
-_, _, X_val,   y_val   = preprocess_split(ANNOTATED_DIR / "validation")
-_, _, X_test,  y_test  = preprocess_split(ANNOTATED_DIR / "test")
+# ---------- PREPROCESS -------------
+df_raw_train, df_filtered_train, X_train, y_train = preprocess_split(ANNOTATED_DIR / "train")
+df_raw_val, df_filtered_val, X_val, y_val = preprocess_split(ANNOTATED_DIR / "validation")
+df_raw_test, df_filtered_test, X_test, y_test = preprocess_split(ANNOTATED_DIR / "test")
+
+df_raw_graph, df_filtered_graph, X_graph, y_graph = preprocess_split(ANNOTATED_DIR / "graphing")
 
 # Normalize, fit on train only
 X_train, X_val, X_test, scaler = normalize(X_train, X_val, X_test)
@@ -49,7 +51,7 @@ np.save(SCALER_DIR / 'scaler_scale.npy', scaler.scale_)
 np.save(SCALER_DIR / 'X_train_sample.npy', X_train[:500])
 print("Scaler saved")
 
-# Train
+# ----------- TRAINING -------------
 model = build_model()
 model.summary()
 history = train(model, X_train, y_train, X_val, y_val)
@@ -58,35 +60,36 @@ plot_history(history)
 # Load best checkpoint
 model = tf.keras.models.load_model(str(KERAS_DIR / 'best_model.keras'))
 
-# Evaluate
-evaluate(model, X_val,  y_val,  split_name="validation")
-evaluate(model, X_test, y_test, split_name="test")
+# -------- EVALUATE -------------
+y_prob_val, y_pred_val = evaluate(model, X_val,  y_val,  split_name="validation")
+y_prob_test, y_pred_test = evaluate(model, X_test, y_test, split_name="test")
 
-# _, y_pred_test = evaluate(model, X_test, y_test, split_name="test")
-# plot_confusion_matrix(y_test, y_pred_test)
+# Plot confusion matrix
+plot_confusion_matrix(y_test, y_pred_test)
+plot_confusion_matrix(y_val, y_pred_val)
 
 
+# ----------- GRAPHING SAMPLES ------------
+# Create visualizations using dataset specific for graphs
+# time = df_filtered_graph['time_ms'].values / 1000.0
 
-# raw_signals = {
-#     col: {'Raw': data_raw[col].values}
-#     for col in SENSOR_COLUMNS
-# }
+# zoom_start = 46
+# zoom_end = 76
 
-# filtered_signals = {
-#     col: {'Filtered': data_filtered[col].values}
-#     for col in SENSOR_COLUMNS
-# }
+# print(f"Visualizing segment: {zoom_start:.2f}s to {zoom_end:.2f}s")
 
-# plot_signals(time, raw_signals, title="Raw IMU Signals")
-# plot_signals(time, filtered_signals, title="Filtered IMU Signals")
-# plot_raw_vs_filtered(time, data_raw, data_filtered, SENSOR_COLUMNS)
-# plot_zoomed_segment(time, data_raw, data_filtered, SENSOR_COLUMNS, 6000, 6300)
-# plot_windows_zoomed(
-#     data_filtered,
+# # Plot raw vs filtered for this segment
+# plot_signal_segment(time, df_raw_graph, df_filtered_graph, SENSOR_COLUMNS, 
+#                     start_s=zoom_start, end_s=zoom_end)
+
+# window_start = 46
+# window_end = 76
+
+# plot_windows_segment(
+#     df_filtered_graph,
 #     signal_col='ax_g',
 #     window_length=WINDOW_LENGTH,
 #     stride=STRIDE,
-#     start_time_s=6000,
-#     end_time_s=6300
+#     start_time_s=window_start,
+#     end_time_s=window_end
 # )
-

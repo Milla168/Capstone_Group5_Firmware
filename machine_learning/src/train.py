@@ -1,4 +1,19 @@
 # src/train.py
+"""
+This module handles model training and evaluation for the crochet stitch detection pipeline.
+It provides functions for:
+
+1. Compiling and training the Keras model with class balancing
+2. Applying callbacks for early stopping, learning rate reduction, and checkpointing
+3. Evaluating model performance with classification metrics
+
+Functions:
+    train: Train the model with configured hyperparameters and callbacks
+    evaluate: Evaluate model and display classification report and confusion matrix
+
+"""
+
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import callbacks
@@ -7,7 +22,22 @@ from sklearn.metrics import classification_report, confusion_matrix
 from configs.config import EPOCHS, BATCH_SIZE, LEARNING_RATE, KERAS_DIR
 
 
+
 def train(model, X_train, y_train, X_val, y_val):
+    """
+    Trains the model with early stopping, learning rate reduction, and checkpointing
+
+        Args:
+            model (tensorflow.keras.Model): Compiled Keras model to train
+            X_train (np.ndarray): Training data of shape (num_windows, window_length, num_channels)
+            y_train (np.ndarray): Training labels of shape (num_windows,)
+            X_val (np.ndarray): Validation data of shape (num_windows, window_length, num_channels)
+            y_val (np.ndarray): Validation labels of shape (num_windows,)
+
+        Returns:
+            tensorflow.keras.callbacks.History: Training history containing loss and metrics per epoch
+    """
+
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
         loss='binary_crossentropy',
@@ -43,7 +73,23 @@ def train(model, X_train, y_train, X_val, y_val):
     return history
 
 
+
 def evaluate(model, X, y, threshold=0.5, split_name=""):
+    """
+    Evaluates model performance and prints classification metrics
+
+        Args:
+            model (tensorflow.keras.Model): Trained Keras model to evaluate
+            X (np.ndarray): Input data of shape (num_windows, window_length, num_channels)
+            y (np.ndarray): Ground truth labels of shape (num_windows,)
+            threshold (float): Classification threshold for converting probabilities to binary predictions
+            split_name (str): Name of the data split for display purposes (e.g., "train", "validation", "test")
+
+        Returns:
+            tuple: (y_prob, y_pred) where y_prob is raw prediction probabilities
+                and y_pred is binary predictions based on threshold
+    """
+
     y_prob = model.predict(X, verbose=0).flatten()
     y_pred = (y_prob >= threshold).astype(int)
 

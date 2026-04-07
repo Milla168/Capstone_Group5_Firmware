@@ -1,10 +1,43 @@
 # src/visualize.py
+"""
+This module provides visualization utilities for the crochet stitch detection pipeline.
+It includes functions for:
+
+1. Plotting raw and filtered IMU signals
+2. Visualizing sliding windows with their assigned labels
+3. Displaying training history curves
+4. Generating confusion matrix plots
+
+Functions:
+    plot_signals: Plot multiple IMU channels over time
+    plot_raw_vs_filtered: Compare raw and filtered signals
+    plot_signal_segment: Zoom into a specific time segment
+    plot_windows_segment: Visualize sliding windows with labels
+    plot_confusion_matrix: Display confusion matrix heatmap
+    plot_history: Plot training loss and accuracy curves
+
+"""
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
+
 def plot_signals(time, signals_dict, title="IMU Signals"):
+    """
+    Plots multiple IMU signal channels over time in separate subplots
+
+        Args:
+            time (np.ndarray): Time array in seconds
+            signals_dict (dict): Dictionary mapping channel names to series data dictionaries
+            title (str): Overall title for the figure
+
+        Returns:
+            None: Displays the matplotlib figure
+    """
+
     num_channels = len(signals_dict)
     fig, axes = plt.subplots(num_channels, 1, figsize=(14, 2.5 * num_channels), sharex=True)
     fig.suptitle(title, fontsize=14)
@@ -24,7 +57,21 @@ def plot_signals(time, signals_dict, title="IMU Signals"):
     plt.show()
 
 
+
 def plot_raw_vs_filtered(time, raw_df, filtered_df, columns):
+    """
+    Plots raw and filtered IMU signals side-by-side for comparison
+
+        Args:
+            time (np.ndarray): Time array in seconds
+            raw_df (pd.DataFrame): Dataframe containing raw sensor data
+            filtered_df (pd.DataFrame): Dataframe containing filtered sensor data
+            columns (list): List of column names to plot
+
+        Returns:
+            None: Displays the matplotlib figure
+    """
+
     fig, axes = plt.subplots(len(columns), 1, figsize=(14, 2.5 * len(columns)), sharex=True)
     fig.suptitle("Raw vs Filtered IMU Signals", fontsize=14)
 
@@ -43,7 +90,23 @@ def plot_raw_vs_filtered(time, raw_df, filtered_df, columns):
     plt.show()
 
 
+
 def plot_signal_segment(time, raw_df, filtered_df, columns, start_s, end_s):
+    """
+    Plots a zoomed segment of raw vs filtered signals within a time range
+
+    Args:
+        time (np.ndarray): Time array in seconds
+        raw_df (pd.DataFrame): Dataframe containing raw sensor data
+        filtered_df (pd.DataFrame): Dataframe containing filtered sensor data
+        columns (list): List of column names to plot
+        start_s (float): Start time in seconds for the segment
+        end_s (float): End time in seconds for the segment
+
+    Returns:
+        None: Displays the matplotlib figure
+    """
+
     mask = (time >= start_s) & (time <= end_s)
 
     fig, axes = plt.subplots(len(columns), 1, figsize=(14, 2.5 * len(columns)), sharex=True)
@@ -64,12 +127,34 @@ def plot_signal_segment(time, raw_df, filtered_df, columns, start_s, end_s):
     plt.show()
 
 
+
 def plot_windows_segment(df, signal_col, window_length, stride, start_time_s, end_time_s):
+    """
+    Visualizes sliding windows with their assigned labels overlaid on signal data
+
+        Args:
+            df (pd.DataFrame): Dataframe containing time, signal, and label columns
+            signal_col (str): Name of the signal column to plot
+            window_length (int): Number of samples per window
+            stride (int): Number of samples to shift between windows
+            start_time_s (float): Start time in seconds for visualization
+            end_time_s (float): End time in seconds for visualization
+
+        Returns:
+            None: Displays the matplotlib figure with color-coded windows
+    """
+
     time_s = df['time_ms'].values / 1000.0
     signal = df[signal_col].values
     labels = df['label'].values
 
     mask = (time_s >= start_time_s) & (time_s <= end_time_s)
+    
+    # Check if we have data in this range
+    if np.sum(mask) == 0:
+        print(f"WARNING: No data found in time range {start_time_s:.2f}s to {end_time_s:.2f}s")
+        print(f"Available range: {time_s.min():.2f}s to {time_s.max():.2f}s")
+        return
 
     plt.figure(figsize=(16, 5))
     plt.plot(time_s[mask], signal[mask], color='black', linewidth=1.2, label=signal_col)
@@ -107,7 +192,19 @@ def plot_windows_segment(df, signal_col, window_length, stride, start_time_s, en
     plt.show()
 
 
+
 def plot_confusion_matrix(y_true, y_pred):
+    """
+    Displays confusion matrix as a heatmap
+
+        Args:
+            y_true (np.ndarray): Ground truth binary labels
+            y_pred (np.ndarray): Predicted binary labels
+
+        Returns:
+            None: Displays the matplotlib confusion matrix
+    """
+
     cm = confusion_matrix(y_true, y_pred)
     disp = ConfusionMatrixDisplay(cm, display_labels=['Non-Stitch', 'Stitch'])
     disp.plot(cmap='Blues', values_format='d')
@@ -115,7 +212,18 @@ def plot_confusion_matrix(y_true, y_pred):
     plt.show()
 
 
+
 def plot_history(history):
+    """
+    Plots training history showing loss and accuracy curves
+
+        Args:
+            history (tensorflow.keras.callbacks.History): Training history object from model.fit()
+
+        Returns:
+            None: Displays matplotlib figure with loss and accuracy subplots
+    """
+    
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     ax1.plot(history.history['loss'],     label='Train')
