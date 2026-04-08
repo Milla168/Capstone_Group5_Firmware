@@ -23,7 +23,7 @@ import tensorflow as tf
 import joblib
 import os
 from configs.config import ANNOTATED_DIR, KERAS_DIR, TFLITE_DIR, SCALER_DIR, SENSOR_COLUMNS, WINDOW_LENGTH, STRIDE
-from src.preprocess import preprocess_split, normalize
+from src.preprocess import preprocess_split
 from src.model import build_model
 from src.train import train, evaluate
 from src.visualize import plot_history, plot_confusion_matrix, plot_signals, plot_raw_vs_filtered, plot_signal_segment, plot_windows_segment
@@ -41,24 +41,27 @@ df_raw_test, df_filtered_test, X_test, y_test = preprocess_split(ANNOTATED_DIR /
 
 df_raw_graph, df_filtered_graph, X_graph, y_graph = preprocess_split(ANNOTATED_DIR / "graphing")
 
-# Normalize, fit on train only
-X_train, X_val, X_test, scaler = normalize(X_train, X_val, X_test)
-
-# Save scaler
-joblib.dump(scaler, SCALER_DIR / 'scaler.pkl')
-np.save(SCALER_DIR / 'scaler_mean.npy',  scaler.mean_)
-np.save(SCALER_DIR / 'scaler_scale.npy', scaler.scale_)
-np.save(SCALER_DIR / 'X_train_sample.npy', X_train[:500])
-print("Scaler saved")
+# Compute normalization stats from raw training data only
+# axis=(0, 1) reduces over (windows, time steps), giving one mean/std per channel
+mean = X_train.mean(axis=(0, 1))
+std  = X_train.std(axis=(0, 1))
+ 
+# Save stats for quantization
+np.save(SCALER_DIR / 'X_train_sample.npy', X_train[:500])   
+print(f"Normalization stats saved")
+print(f"  mean: {mean}")
+print(f"  std:  {std}")
 
 # ----------- TRAINING -------------
-model = build_model()
+# The model's embedded Normalization layer scales inputs internally
+# X_train and X_val are passed raw 
+model = build_model(mean=mean, std=std)
 model.summary()
 history = train(model, X_train, y_train, X_val, y_val)
 plot_history(history)
 
 # Load best checkpoint
-model = tf.keras.models.load_model(str(KERAS_DIR / 'best_model.keras'))
+model = tf.keras.models.load_model(str(KERAS_DIR / 'best_model.keras'), compile=False)
 
 # -------- EVALUATE -------------
 y_prob_val, y_pred_val = evaluate(model, X_val,  y_val,  split_name="validation")

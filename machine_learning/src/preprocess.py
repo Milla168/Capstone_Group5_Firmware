@@ -139,31 +139,31 @@ def sliding_windows(data, labels, window_length=WINDOW_LENGTH, stride=STRIDE):
 
 
 
-def normalize(X_train, X_val, X_test=None):
-    """
-    Normalizes sensor data using StandardScaler fitted on training data
+# def normalize(X_train, X_val, X_test=None):
+#     """
+#     Normalizes sensor data using StandardScaler fitted on training data
 
-        Args:
-            X_train (np.ndarray): Training data of shape (num_windows, window_length, num_channels)
-            X_val (np.ndarray): Validation data of shape (num_windows, window_length, num_channels)
-            X_test (np.ndarray, optional): Test data of shape (num_windows, window_length, num_channels)
+#         Args:
+#             X_train (np.ndarray): Training data of shape (num_windows, window_length, num_channels)
+#             X_val (np.ndarray): Validation data of shape (num_windows, window_length, num_channels)
+#             X_test (np.ndarray, optional): Test data of shape (num_windows, window_length, num_channels)
 
-        Returns:
-            tuple: Scaled arrays (X_train_scaled, X_val_scaled, [X_test_scaled], scaler)
-    """
+#         Returns:
+#             tuple: Scaled arrays (X_train_scaled, X_val_scaled, [X_test_scaled], scaler)
+#     """
 
-    num_train, window_len, num_channels = X_train.shape
+#     num_train, window_len, num_channels = X_train.shape
 
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train.reshape(-1, num_channels)).reshape(X_train.shape)
+#     scaler = StandardScaler()
+#     X_train_scaled = scaler.fit_transform(X_train.reshape(-1, num_channels)).reshape(X_train.shape)
 
-    X_val_scaled = scaler.transform(X_val.reshape(-1, num_channels)).reshape(X_val.shape)
+#     X_val_scaled = scaler.transform(X_val.reshape(-1, num_channels)).reshape(X_val.shape)
 
-    if X_test is not None:
-        X_test_scaled = scaler.transform( X_test.reshape(-1, num_channels)).reshape(X_test.shape)
-        return X_train_scaled, X_val_scaled, X_test_scaled, scaler
+#     if X_test is not None:
+#         X_test_scaled = scaler.transform( X_test.reshape(-1, num_channels)).reshape(X_test.shape)
+#         return X_train_scaled, X_val_scaled, X_test_scaled, scaler
 
-    return X_train_scaled, X_val_scaled, scaler
+#     return X_train_scaled, X_val_scaled, scaler
 
 
 

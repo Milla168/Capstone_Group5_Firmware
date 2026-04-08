@@ -10,6 +10,9 @@ MODELS_DIR    = BASE_DIR / "models"
 KERAS_DIR     = MODELS_DIR / "keras"
 TFLITE_DIR    = MODELS_DIR / "tflite"
 SCALER_DIR    = MODELS_DIR / "scaler"
+KERAS_MODEL = KERAS_DIR / "best_model.keras"
+TFLITE_MODEL = TFLITE_DIR / "model.tflite"
+C_HEADER_FILE = TFLITE_DIR / "model_data.h"
 
 # Sensor
 SAMPLING_RATE   = 100
