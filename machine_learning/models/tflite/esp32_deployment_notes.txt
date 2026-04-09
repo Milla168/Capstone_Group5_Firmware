@@ -1,0 +1,34 @@
+ESP32 Deployment Notes
+======================
+Quantization mode : int8
+Model file        : model.tflite
+C header          : model_data.h
+
+Normalization (apply BEFORE feeding the model)
+-----------------------------------------------
+mean = [-0.1676114946603775, -0.6739016771316528, 0.10533028095960617, -0.2586512267589569, 1.0771386623382568, 0.8216671943664551]
+std  = [0.27730149030685425, 0.3424738645553589, 0.5922961235046387, 70.27664947509766, 40.8291015625, 41.081451416015625]
+
+For each window of shape (200, 6):
+    norm[t][ch] = (raw[t][ch] - mean[ch]) / std[ch]
+
+Input tensor
+------------
+dtype      : int8
+shape      : [np.int32(1), np.int32(200), np.int32(6)]
+scale      : 0.031214451417326927
+zero_point : -4
+
+For int8 mode, quantize each normalised float value:
+    int8_val = (int8_t) clamp(round(norm_val / 0.03121445) + -4, -128, 127)
+
+Output tensor
+-------------
+dtype      : int8
+shape      : [np.int32(1), np.int32(1)]
+scale      : 0.00390625
+zero_point : -128
+
+De-quantize output to probability:
+    probability = ((float)int8_output - -128) * 0.00390625
+    prediction  = probability >= 0.5 ? 1 (STITCH) : 0 (NON-STITCH)

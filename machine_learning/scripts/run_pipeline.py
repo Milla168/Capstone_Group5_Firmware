@@ -34,42 +34,103 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 for d in [KERAS_DIR, TFLITE_DIR, SCALER_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
+
 # ---------- PREPROCESS -------------
 df_raw_train, df_filtered_train, X_train, y_train = preprocess_split(ANNOTATED_DIR / "train")
 df_raw_val, df_filtered_val, X_val, y_val = preprocess_split(ANNOTATED_DIR / "validation")
 df_raw_test, df_filtered_test, X_test, y_test = preprocess_split(ANNOTATED_DIR / "test")
-
 df_raw_graph, df_filtered_graph, X_graph, y_graph = preprocess_split(ANNOTATED_DIR / "graphing")
 
-# Compute normalization stats from raw training data only
-# axis=(0, 1) reduces over (windows, time steps), giving one mean/std per channel
+# =========================================================
+# NORMALIZATION (CRITICAL FIX)
+# =========================================================
+
+# compute stats ONLY from training set
 mean = X_train.mean(axis=(0, 1))
-std  = X_train.std(axis=(0, 1))
- 
-# Save stats for quantization
-np.save(SCALER_DIR / 'X_train_sample.npy', X_train[:500])   
-print(f"Normalization stats saved")
+std  = X_train.std(axis=(0, 1)) + 1e-8   # avoid divide-by-zero
+
+print(f"Normalization stats computed")
 print(f"  mean: {mean}")
 print(f"  std:  {std}")
 
-# ----------- TRAINING -------------
-# The model's embedded Normalization layer scales inputs internally
-# X_train and X_val are passed raw 
-model = build_model(mean=mean, std=std)
+# apply normalization to ALL splits
+X_train = (X_train - mean) / std
+X_val   = (X_val   - mean) / std
+X_test  = (X_test  - mean) / std
+X_graph = (X_graph - mean) / std
+
+# save stats for ESP32
+np.save(SCALER_DIR / "mean.npy", mean)
+np.save(SCALER_DIR / "std.npy", std)
+np.save(SCALER_DIR / "X_train_cal.npy", X_train[:200])
+
+print("Saved mean/std for deployment")
+
+# =========================================================
+# TRAINING
+# =========================================================
+
+# IMPORTANT: model has NO normalization layer now
+model = build_model()
+
 model.summary()
+
 history = train(model, X_train, y_train, X_val, y_val)
 plot_history(history)
 
-# Load best checkpoint
-model = tf.keras.models.load_model(str(KERAS_DIR / 'best_model.keras'), compile=False)
+# load best model
+model = tf.keras.models.load_model(
+    str(KERAS_DIR / "best_model.keras"),
+    compile=False
+)
 
-# -------- EVALUATE -------------
-y_prob_val, y_pred_val = evaluate(model, X_val,  y_val,  split_name="validation")
+# =========================================================
+# EVALUATION
+# =========================================================
+
+y_prob_val, y_pred_val = evaluate(model, X_val, y_val, split_name="validation")
 y_prob_test, y_pred_test = evaluate(model, X_test, y_test, split_name="test")
 
-# Plot confusion matrix
 plot_confusion_matrix(y_test, y_pred_test)
 plot_confusion_matrix(y_val, y_pred_val)
+
+
+# # ---------- PREPROCESS -------------
+# df_raw_train, df_filtered_train, X_train, y_train = preprocess_split(ANNOTATED_DIR / "train")
+# df_raw_val, df_filtered_val, X_val, y_val = preprocess_split(ANNOTATED_DIR / "validation")
+# df_raw_test, df_filtered_test, X_test, y_test = preprocess_split(ANNOTATED_DIR / "test")
+
+# df_raw_graph, df_filtered_graph, X_graph, y_graph = preprocess_split(ANNOTATED_DIR / "graphing")
+
+# # Compute normalization stats from raw training data only
+# # axis=(0, 1) reduces over (windows, time steps), giving one mean/std per channel
+# mean = X_train.mean(axis=(0, 1))
+# std  = X_train.std(axis=(0, 1))
+ 
+# # Save stats for quantization
+# np.save(SCALER_DIR / 'X_train_sample.npy', X_train[:500])   
+# print(f"Normalization stats saved")
+# print(f"  mean: {mean}")
+# print(f"  std:  {std}")
+
+# # ----------- TRAINING -------------
+# # The model's embedded Normalization layer scales inputs internally
+# # X_train and X_val are passed raw 
+# model = build_model(mean=mean, std=std)
+# model.summary()
+# history = train(model, X_train, y_train, X_val, y_val)
+# plot_history(history)
+
+# # Load best checkpoint
+# model = tf.keras.models.load_model(str(KERAS_DIR / 'best_model.keras'), compile=False)
+
+# # -------- EVALUATE -------------
+# y_prob_val, y_pred_val = evaluate(model, X_val,  y_val,  split_name="validation")
+# y_prob_test, y_pred_test = evaluate(model, X_test, y_test, split_name="test")
+
+# # Plot confusion matrix
+# plot_confusion_matrix(y_test, y_pred_test)
+# plot_confusion_matrix(y_val, y_pred_val)
 
 
 # ----------- GRAPHING SAMPLES ------------

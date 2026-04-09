@@ -60,44 +60,44 @@ def load_sessions(split_dir):
 
 
 
-def low_pass_filter(data, cutoff_hz=CUTOFF_HZ, sample_rate_hz=SAMPLING_RATE, order=4):
-    """
-    Applies low pass filter to sensor data to remove high-frequency noise
+# def low_pass_filter(data, cutoff_hz=CUTOFF_HZ, sample_rate_hz=SAMPLING_RATE, order=4):
+#     """
+#     Applies low pass filter to sensor data to remove high-frequency noise
 
-        Args:
-            data (np.ndarray): Raw sensor signal data to be filtered
-            cutoff_hz (float): Cutoff frequency in Hz for the low pass filter
-            sample_rate_hz (float): Sampling rate of the sensor data in Hz
-            order (int): Order of the Butterworth filter
+#         Args:
+#             data (np.ndarray): Raw sensor signal data to be filtered
+#             cutoff_hz (float): Cutoff frequency in Hz for the low pass filter
+#             sample_rate_hz (float): Sampling rate of the sensor data in Hz
+#             order (int): Order of the Butterworth filter
 
-        Returns:
-            np.ndarray: Filtered sensor data with high-frequency noise removed
-    """
+#         Returns:
+#             np.ndarray: Filtered sensor data with high-frequency noise removed
+#     """
 
-    nyquist = sample_rate_hz / 2
-    normal_cutoff = cutoff_hz / nyquist
-    sos = butter(order, normal_cutoff, btype='low', analog=False, output='sos')
-    data_filtered = sosfiltfilt(sos, data)
+#     nyquist = sample_rate_hz / 2
+#     normal_cutoff = cutoff_hz / nyquist
+#     sos = butter(order, normal_cutoff, btype='low', analog=False, output='sos')
+#     data_filtered = sosfiltfilt(sos, data)
 
-    return data_filtered
+#     return data_filtered
 
 
 
-def apply_filter(df):
-    """
-    Applies low pass filter to all sensor columns in the dataframe
+# def apply_filter(df):
+#     """
+#     Applies low pass filter to all sensor columns in the dataframe
 
-        Args:
-            df (pd.DataFrame): Dataframe containing raw sensor data
+#         Args:
+#             df (pd.DataFrame): Dataframe containing raw sensor data
 
-        Returns:
-            pd.DataFrame: Copy of dataframe with filtered sensor columns
-    """
-    df_filtered = df.copy()
-    for col in SENSOR_COLUMNS:
-        df_filtered[col] = low_pass_filter(df[col].values, CUTOFF_HZ, SAMPLING_RATE)
+#         Returns:
+#             pd.DataFrame: Copy of dataframe with filtered sensor columns
+#     """
+#     df_filtered = df.copy()
+#     for col in SENSOR_COLUMNS:
+#         df_filtered[col] = low_pass_filter(df[col].values, CUTOFF_HZ, SAMPLING_RATE)
 
-    return df_filtered
+#     return df_filtered
 
 
 
@@ -212,12 +212,12 @@ def preprocess_split(split_dir):
     df_raw = clean(df_raw)
     print(f"  Samples after cleaning:  {len(df_raw)}")
 
-    df_filtered = apply_filter(df_raw)
+    # df_filtered = apply_filter(df_raw)
 
-    imu_data = df_filtered[SENSOR_COLUMNS].values.astype(np.float32)
-    labels   = df_filtered['label'].values.astype(int)
+    imu_data = df_raw[SENSOR_COLUMNS].values.astype(np.float32)
+    labels   = df_raw['label'].values.astype(int)
 
     X, y = sliding_windows(imu_data, labels)
     print(f"  Windows: {len(X)} | Stitch: {np.sum(y==1)} | Non-stitch: {np.sum(y==0)}")
 
-    return df_raw, df_filtered, X, y
+    return df_raw, df_raw, X, y

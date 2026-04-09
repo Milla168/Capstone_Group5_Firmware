@@ -23,30 +23,32 @@ import numpy as np
 
 
 
-@tf.keras.utils.register_keras_serializable()
-class StandardScalerLayer(layers.Layer):
+# @tf.keras.utils.register_keras_serializable()
+# class StandardScalerLayer(layers.Layer):
 
-    def __init__(self, mean, std, **kwargs):
-        super().__init__(**kwargs)
-        self.mean = np.array(mean, dtype=np.float32)
-        self.std  = np.array(std,  dtype=np.float32)
+#     def __init__(self, mean, std, **kwargs):
+#         super().__init__(**kwargs)
+#         self.mean = np.array(mean, dtype=np.float32)
+#         self.std  = np.array(std,  dtype=np.float32)
 
-    def call(self, inputs):
-        return (inputs - self.mean) / self.std
+#     def call(self, inputs):
+#         return (inputs - self.mean) / self.std
 
-    def get_config(self):
-        config = super().get_config()
-        config.update({
-            "mean": self.mean.tolist(),  
-            "std":  self.std.tolist(),
-        })
-        return config
+#     def get_config(self):
+#         config = super().get_config()
+#         config.update({
+#             "mean": self.mean.tolist(),  
+#             "std":  self.std.tolist(),
+#         })
+#         return config
 
-    @classmethod
-    def from_config(cls, config):         
-        config["mean"] = np.array(config["mean"], dtype=np.float32)
-        config["std"]  = np.array(config["std"],  dtype=np.float32)
-        return cls(**config)
+#     @classmethod
+#     def from_config(cls, config):         
+#         config["mean"] = np.array(config["mean"], dtype=np.float32)
+#         config["std"]  = np.array(config["std"],  dtype=np.float32)
+#         return cls(**config)
+
+
 
 
 
@@ -73,8 +75,8 @@ def build_model(
     inputs = layers.Input(shape=(window_length, num_channels))
     x = inputs
 
-    if mean is not None and std is not None:
-        x = StandardScalerLayer(mean, std, name="normalization")(x)
+    # if mean is not None and std is not None:
+    #     x = StandardScalerLayer(mean, std, name="normalization")(x)
 
     x = layers.Conv1D(32, kernel_size=5, activation='relu', padding='same')(x)
     x = layers.BatchNormalization()(x)
