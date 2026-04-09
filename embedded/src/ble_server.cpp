@@ -21,15 +21,20 @@ class MyServerCallbacks: public BLEServerCallbacks {
     }
 };
 
-void setupBLE(const char* deviceName = "Smart_Crochet_ESP"){
+void setupBLE(const char* deviceName = "Smart_Hook"){
     BLEDevice::init(deviceName);
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
+    pServer->setCallbacks(new MyServerCallbacks()); //connect callbacks
     pCounterCharacteristic = pService->createCharacteristic(
                         COUNTER_CHARACTERISTIC_UUID,
                         BLECharacteristic::PROPERTY_READ | 
-                        BLECharacteristic::PROPERTY_WRITE
+                        BLECharacteristic::PROPERTY_WRITE |
+                        BLECharacteristic::PROPERTY_NOTIFY // enables notify()
                     );
+    BLEDescriptor *pDescriptor = new BLEDescriptor((uint16_t)0x2902); //for notifications
+    pCounterCharacteristic->addDescriptor(pDescriptor);
+
     pService->start();
 
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
@@ -43,7 +48,7 @@ void setupBLE(const char* deviceName = "Smart_Crochet_ESP"){
 
 void notifyCountIncremented(uint32_t count){
     if(deviceConnected){
-        pCounterCharacteristic->setValue(count);
+        pCounterCharacteristic->setValue((uint8_t*)&count, 4); // converts count to uint32_t byte array
         pCounterCharacteristic->notify();
     }
 }
