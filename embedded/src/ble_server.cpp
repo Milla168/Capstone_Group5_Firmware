@@ -13,11 +13,11 @@ bool deviceConnected = false;
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
       deviceConnected = true;
-      BLEDevice::startAdvertising();
     };
 
     void onDisconnect(BLEServer* pServer) {
       deviceConnected = false;
+      BLEDevice::startAdvertising(); //restart advertising so app can reconnect if link drops
     }
 };
 

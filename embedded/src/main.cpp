@@ -18,11 +18,9 @@ void setup(void) {
 }
 
 void loop() {
-  if (i % 5 == 0){
-    Serial.println("increment count");
-    notifyCountIncremented(i);
-  }
+  Serial.println("increment count");
+  notifyCountIncremented(i);
   i++;
-  Serial.println("");
-  delay(500);
+  
+  delay(10000);
 }
