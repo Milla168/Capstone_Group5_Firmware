@@ -27,14 +27,16 @@ class MyServerCallbacks: public BLEServerCallbacks {
 class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* pCharacteristic){
         std::string value = pCharacteristic->getValue();
-        if (value.length() == 4) {
-            // Reconstruct the uint32_t from the 4 bytes (Little Endian)
-            uint8_t flag = (uint8_t)value[0];
-            isPaused = (flag == 1);
 
-            Serial.print("BLE Command: ");
-            Serial.println(isPaused ? "PAUSE" : "RESUME");           
-        }
+        // Reconstruct the uint32_t from the 4 bytes (Little Endian)
+        uint8_t flag = (uint8_t)value[0];
+        Serial.print("FLAG");
+        Serial.print(flag);
+        isPaused = (flag == 1);
+
+        Serial.print("BLE Command: ");
+        Serial.println(isPaused ? "PAUSE" : "RESUME");           
+        
     }
 };
 

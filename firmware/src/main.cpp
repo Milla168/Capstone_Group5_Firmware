@@ -65,7 +65,7 @@ static const int   WINDOW_LENGTH  = 200;
 static const int   STRIDE         = 100;
 static const int   NUM_CHANNELS   = 6;
 static const int   SAMPLE_RATE_HZ = 100;
-static const float THRESHOLD      = 0.5f;
+static const float THRESHOLD      = 0.6f;
 
 // ---------------------------------------------------------------------------
 // Normalization constants -- from models/scaler/mean.npy and std.npy
