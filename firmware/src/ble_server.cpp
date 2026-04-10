@@ -9,6 +9,7 @@
 
 BLECharacteristic* pCounterCharacteristic = NULL;
 bool deviceConnected = false;
+bool isPaused = false;
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -20,6 +21,26 @@ class MyServerCallbacks: public BLEServerCallbacks {
       BLEDevice::startAdvertising(); //restart advertising so app can reconnect if link drops
     }
 };
+
+//NOTE: on write/notify, the counter characteristic is the stitch count
+// BUT on read, the counter characteristic is the pause flag
+class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
+    void onWrite(BLECharacteristic* pCharacteristic){
+        std::string value = pCharacteristic->getValue();
+        if (value.length() == 4) {
+            // Reconstruct the uint32_t from the 4 bytes (Little Endian)
+            uint8_t flag = (uint8_t)value[0];
+            isPaused = (flag == 1);
+
+            Serial.print("BLE Command: ");
+            Serial.println(isPaused ? "PAUSE" : "RESUME");           
+        }
+    }
+};
+
+bool getPauseState(){
+    return isPaused;
+}
 
 void setupBLE(const char* deviceName = "Smart_Hook"){
     BLEDevice::init(deviceName);
@@ -34,6 +55,7 @@ void setupBLE(const char* deviceName = "Smart_Hook"){
                     );
     BLEDescriptor *pDescriptor = new BLEDescriptor((uint16_t)0x2902); //for notifications
     pCounterCharacteristic->addDescriptor(pDescriptor);
+    pCounterCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
 
     pService->start();
 
