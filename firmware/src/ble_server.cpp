@@ -2,12 +2,17 @@
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <ble_server.h>
+#include <main.cpp>
 
 // Service and charactersitic UUIDs
 #define SERVICE_UUID "3fef7f66-b8a3-4c26-ba26-4aa6442d980b"
 #define COUNTER_CHARACTERISTIC_UUID "2807becc-e2e0-464b-aaf4-e6752ec49e79"
+#define PAUSE_CHARACTERISTIC_UUID "e085e3fb-d793-4edc-8df9-5f8631f24f1d"
+
 
 BLECharacteristic* pCounterCharacteristic = NULL;
+BLECharacteristic* pPauseCharacteristic = NULL;
+
 bool deviceConnected = false;
 bool isPaused = false;
 
@@ -24,11 +29,12 @@ class MyServerCallbacks: public BLEServerCallbacks {
 
 //NOTE: on write/notify, the counter characteristic is the stitch count
 // BUT on read, the counter characteristic is the pause flag
-class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
+
+//TODO: make this pause callback
+class CharacteristicCallback : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* pCharacteristic){
         std::string value = pCharacteristic->getValue();
 
-        // Reconstruct the uint32_t from the 4 bytes (Little Endian)
         uint8_t flag = (uint8_t)value[0];
         Serial.print("FLAG");
         Serial.print(flag);
@@ -40,6 +46,21 @@ class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
     }
 };
 
+// class CounterCallback : public BLECharacteristicCallbacks {
+//     void onWrite(BLECharacteristic* pCharacteristic){
+//         std::string value = pCharacteristic->getValue();
+//         // Reconstruct the uint32_t from the 4 bytes (Little Endian)
+//         uint32_t receivedCount = (uint8_t)value[0] | 
+//                                 ((uint8_t)value[1] << 8) | 
+//                                 ((uint8_t)value[2] << 16) | 
+//                                 ((uint8_t)value[3] << 24);
+        
+//         stitch_count = (int)receivedCount;
+        
+//         Serial.print("New count received from app");
+//     }
+// };
+
 bool getPauseState(){
     return isPaused;
 }
@@ -49,6 +70,7 @@ void setupBLE(const char* deviceName = "Smart_Hook"){
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
     pServer->setCallbacks(new MyServerCallbacks()); //connect callbacks
+
     pCounterCharacteristic = pService->createCharacteristic(
                         COUNTER_CHARACTERISTIC_UUID,
                         BLECharacteristic::PROPERTY_READ | 
@@ -57,7 +79,14 @@ void setupBLE(const char* deviceName = "Smart_Hook"){
                     );
     BLEDescriptor *pDescriptor = new BLEDescriptor((uint16_t)0x2902); //for notifications
     pCounterCharacteristic->addDescriptor(pDescriptor);
-    pCounterCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+    pCounterCharacteristic->setCallbacks(new CharacteristicCallback());
+
+    // pPauseCharacteristic = pService->createCharacteristic(
+    //     PAUSE_CHARACTERISTIC_UUID,
+    //     BLECharacteristic::PROPERTY_READ |
+    //     BLECharacteristic::PROPERTY_WRITE 
+    // );
+    // pPauseCharacteristic->setCallbacks(new PauseCallback());
 
     pService->start();
 
