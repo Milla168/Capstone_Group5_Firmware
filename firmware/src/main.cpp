@@ -197,6 +197,7 @@ void run_inference() {
   if (prediction == 1 && prev_prediction == 0 && debounce_remaining == 0) {
     if (getPauseState() == false){ // the user has not paused the session
       stitch_count++;
+      notifyCountIncremented(stitch_count);
       Serial.print(">>> STITCH DETECTED total=");
     } else{
       Serial.print(">>> STITCH DETECTION PAUSED total=");
